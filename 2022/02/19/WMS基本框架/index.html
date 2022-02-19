@@ -6,23 +6,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="fjd">
-    <title>page1 - fjd</title>
+    <title>WMS基本框架 - fjd</title>
     <meta name="author" content="付京东">
     
     
-        <link rel="icon" href="http://fjddhd.github.io/assets/images/myphone.png">
+        <link rel="icon" href="http://fjddhd.github.io/assets/images/cover.jpg">
     
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"Website","@id":"http://fjddhd.github.io","author":{"@type":"Person","name":"付京东","sameAs":["https://github.com/fjddhd","#499838742@qq.com"]},"name":"fjd","description":"","url":"http://fjddhd.github.io"}</script>
-    <meta property="og:type" content="blog">
-<meta property="og:title" content="page1">
-<meta property="og:url" content="http://fjddhd.github.io/page1/index.html">
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"付京东","sameAs":["https://github.com/fjddhd","#499838742@qq.com"]},"articleBody":"介绍启动一个应用时应用端进程的调用核心链路\n\n","dateCreated":"2022-02-19T19:30:27+08:00","dateModified":"2022-02-19T19:36:57+08:00","datePublished":"2022-02-19T19:30:27+08:00","description":"介绍启动一个应用时应用端进程的调用核心链路","headline":"WMS基本框架","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"http://fjddhd.github.io/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/"},"publisher":{"@type":"Organization","name":"付京东","sameAs":["https://github.com/fjddhd","#499838742@qq.com"]},"url":"http://fjddhd.github.io/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/"}</script>
+    <meta name="description" content="介绍启动一个应用时应用端进程的调用核心链路">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="WMS基本框架">
+<meta property="og:url" content="http://fjddhd.github.io/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/index.html">
 <meta property="og:site_name" content="fjd">
+<meta property="og:description" content="介绍启动一个应用时应用端进程的调用核心链路">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2022-02-19T06:23:18.000Z">
-<meta property="article:modified_time" content="2022-02-19T06:23:18.471Z">
+<meta property="og:image" content="http://fjddhd.github.io/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/ui_pipeline.png">
+<meta property="article:published_time" content="2022-02-19T11:30:27.000Z">
+<meta property="article:modified_time" content="2022-02-19T11:36:57.177Z">
 <meta property="article:author" content="付京东">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://fjddhd.github.io/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/ui_pipeline.png">
     
     
         
@@ -52,7 +56,7 @@
 
     
 
-<header id="header" data-behavior="1">
+<header id="header" data-behavior="4">
     <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
     <div class="header-title">
         <a
@@ -79,7 +83,7 @@
             <!-- Define author's picture -->
 
 
-<nav id="sidebar" data-behavior="1">
+<nav id="sidebar" data-behavior="4">
     <div class="sidebar-container">
         
         
@@ -195,7 +199,7 @@
 </nav>
 
             
-            <div id="main" data-behavior="1"
+            <div id="main" data-behavior="4"
                  class="
                         hasCoverMetaIn
                         ">
@@ -206,12 +210,12 @@
         <div class="post-header main-content-wrap text-left">
     
         <h1 class="post-title">
-            page1
+            WMS基本框架
         </h1>
     
     
         <div class="post-meta">
-    <time datetime="2022-02-19T14:23:18+08:00">
+    <time datetime="2022-02-19T19:30:27+08:00">
 	
 		    2月 19, 2022
     	
@@ -225,7 +229,9 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            
+            <p>介绍启动一个应用时应用端进程的调用核心链路</p>
+<span id="more"></span>
+<img src="/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/ui_pipeline.png" class title="This is an example image">
             
 
 
@@ -250,11 +256,14 @@
             </li>
             <li class="post-action">
                 
-                    <a
-                        class="post-action-btn btn btn--disabled"
-                        aria-hidden="true"
-                    >
-                        
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/02/19/AMS/"
+                    data-tooltip="启动应用的客户端表现"
+                    aria-label="下一篇: 启动应用的客户端表现"
+                >
+                    
                         <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
                         <i class="fa fa-angle-right" aria-hidden="true"></i>
                     </a>
@@ -266,7 +275,7 @@
             <a
                 class="post-action-btn btn btn--default btn-open-shareoptions"
                 href="#btn-open-shareoptions"
-                aria-label="Diesen Beitrag teilen"
+                aria-label="Share this post"
             >
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
@@ -277,7 +286,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://fjddhd.github.io/page1/index.html&amp;title=page1"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://fjddhd.github.io/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/&amp;title=WMS基本框架"
                     title="分享到 QQ"
                     aria-label="分享到 QQ"
                 >
@@ -290,7 +299,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -315,6 +324,99 @@
 </footer>
 
             </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/02/19/AMS/"
+                    data-tooltip="启动应用的客户端表现"
+                    aria-label="下一篇: 启动应用的客户端表现"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://fjddhd.github.io/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/&amp;title=WMS基本框架"
+                    title="分享到 QQ"
+                    aria-label="分享到 QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=http://fjddhd.github.io/2022/02/19/WMS%E5%9F%BA%E6%9C%AC%E6%A1%86%E6%9E%B6/&amp;title=WMS基本框架"
+                        aria-label="分享到 QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
             
         </div>
         
@@ -345,7 +447,7 @@
                 <br/>
                 <p>Xiaomi</p>
 
-                <p>Email: <strong><a href="mailto:&#52;&#57;&#x39;&#56;&#51;&#x38;&#55;&#x34;&#x32;&#x40;&#113;&#113;&#x2e;&#x63;&#111;&#x6d;">&#52;&#57;&#x39;&#56;&#51;&#x38;&#55;&#x34;&#x32;&#x40;&#113;&#113;&#x2e;&#x63;&#111;&#x6d;</a></strong></p>
+                <p>Email: <strong><a href="mailto:&#x34;&#x39;&#57;&#x38;&#51;&#56;&#55;&#52;&#50;&#64;&#113;&#x71;&#46;&#x63;&#x6f;&#x6d;">&#x34;&#x39;&#57;&#x38;&#51;&#56;&#55;&#52;&#50;&#64;&#113;&#x71;&#46;&#x63;&#x6f;&#x6d;</a></strong></p>
 
 				<p>微信: <strong>fjddhd</strong></p>
 
