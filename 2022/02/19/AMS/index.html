@@ -1,0 +1,495 @@
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="fjd">
+    <title>启动应用的客户端表现 - fjd</title>
+    <meta name="author" content="付京东">
+    
+    
+        <link rel="icon" href="http://fjddhd.github.io/assets/images/phone.png">
+    
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"付京东","sameAs":["https://github.com/fjddhd","#499838742@qq.com"]},"articleBody":"介绍启动一个应用时应用端进程的调用核心链路\n\n代码基于aosp10代码\n\n在activitythread的handle（launch、pause、stop、resume、start）中加jdfu这个TAG的日志和调用堆栈\n\n从tvhome开始启动rlluncher应用\n\n抓日志过滤规则如下：\n\n\n\nlogcat -b all | grep -iE ‘ jdfu|TransactionExecutor|am_|wm_’ | grep -v ‘am_pss’\n\n日志输出：[title] [url] [link text] [additional options]12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273747576777879808182838485868788899091929394959697989910010110210310410510610710810911011111211311411511611711811912012112212312412512612712812913013113213313413513613713813914014114214314414514614714814915015115215315415515615715815901-26 10:01:16.722   651  5692 I wm_stack_created: 101-26 10:01:16.740   651  5692 I wm_task_created: [36,1]01-26 10:01:16.743   651  5692 I wm_task_moved: [36,0,2147483647]01-26 10:01:16.747   651  5692 I am_focused_stack: [0,0,1,0,reuseOrNewTask]01-26 10:01:16.751   651  5692 I am_create_task: [0,36]01-26 10:01:16.751   651  5692 I am_create_activity: [0,88981503,36,com.xiaomi.rlluncher/.MainActivity,android.intent.action.MAIN,NULL,NULL,268435456]01-26 10:01:16.758   651  5692 I wm_task_moved: [36,0,2147483647]---------------------------------------------------------------------------------------------//注意：同一tid的start和end日志是TransactionExecutor的execute方法调用的区间日志，每个tid为一个atms（activityStackSupervisor活ActivityRecord等）发来的transaction//该方法主要调用 executeCallbacks(transaction) 和 executeLifecycleState(transaction)这两个方法//executeCallbacks中会从transaction中拿callbacks，调用对应callback的execute走AT.handle对应生命周期、callback.postExecute//executeLifecycleState中会从transaction中拿lifecycleItem（不同类型的LI对应不通生命周期），依次走cycleToPath-&gt;performLifecycleSequence、LI.execute走AT.handle对应生命周期、LI.postExecute---------------------------------------------------------------------------------------------01-26 10:01:16.768  1825  1825 D TransactionExecutor: tId:33635 Start resolving transaction01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 ClientTransaction&#123;01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635   callbacks=[01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635     TopResumedActivityChangeItem&#123;onTop=false&#125;01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635   ]01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635   stateRequest=null01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 &#125;01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 Target activity: com.mitv.tvhome.MainActivityUserMode//executeCallbacks方法内打印，这个回调用TvHome的onTopResumedActivityChange生命周期回调01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 Resolving callbacks in transaction01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 Resolving callback: TopResumedActivityChangeItem&#123;onTop=false&#125;01-26 10:01:16.769  1825  1825 I am_on_top_resumed_lost_called: [0,com.mitv.tvhome.MainActivityUserMode,topStateChangedWhenResumed]01-26 10:01:16.769   651  5692 I am_pause_activity: [0,178865534,com.mitv.tvhome/.MainActivityUserMode,userLeaving=true]01-26 10:01:16.787  1825  1825 D TransactionExecutor: tId:33635 End resolving transaction------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//executeLifecycleState方法内打印，这个会走performLifecycleSequence01-26 10:01:16.795  1825  1825 D TransactionExecutor: tId:15717186 Start resolving transaction01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 ClientTransaction&#123;01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186   callbacks=[]01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186   stateRequest=PauseActivityItem&#123;finished=false,userLeaving=true,configChanges=0,dontReport=false&#125;01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 &#125;01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 Target activity: com.mitv.tvhome.MainActivityUserMode01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 Resolving lifecycle state: PauseActivityItem&#123;finished=false,userLeaving=true,configChanges=0,dontReport=false&#125; for activity: .MainActivityUserMode01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 Cycle activity: .MainActivityUserMode from: ON_RESUME to: ON_PAUSE excludeLastState: true01-26 10:01:16.797  1825  1825 D  jdfu   : acitivity = ActivityRecord&#123;7950ddf token=android.os.BinderProxy@8b12639 &#123;com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode&#125;&#125; performLifecycleSequence://transaction在cycleToPath中的getLifecyclePath拿不到Path，所以这个流程下的performLifecycleSequence没进任何生命周期流程//executeLifecycleState中拿到了PauseActivityItem，调用其execute进入pause流程01-26 10:01:16.797  1825  1825 V  jdfu   : Handling Pause of ActivityRecord&#123;7950ddf token=android.os.BinderProxy@8b12639 &#123;com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode&#125;&#125;01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.ActivityThread.handlePauseActivity(ActivityThread.java:4423)01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.servertransaction.PauseActivityItem.execute(PauseActivityItem.java:46)01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:176)01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.os.Handler.dispatchMessage(Handler.java:107)01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.os.Looper.loop(Looper.java:214)01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.ActivityThread.main(ActivityThread.java:7391)01-26 10:01:16.798  1825  1825 V  jdfu STACK : java.lang.reflect.Method.invoke(Native Method)01-26 10:01:16.798  1825  1825 V  jdfu STACK : com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)01-26 10:01:16.798  1825  1825 V  jdfu STACK : com.android.internal.os.ZygoteInit.main(ZygoteInit.java:958)01-26 10:01:16.824  1825  1825 W System.err:    at android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:176)01-26 10:01:16.824  1825  1825 W System.err:    at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)01-26 10:01:16.827  1825  1825 I am_on_paused_called: [0,com.mitv.tvhome.MainActivityUserMode,performPause]01-26 10:01:16.846   651   747 I am_add_to_stopping: [0,178865534,com.mitv.tvhome/.MainActivityUserMode,makeInvisible]01-26 10:01:16.852  1825  1825 D TransactionExecutor: tId:15717186 End resolving transaction--------------------------------------------------------------------------------------------- -----------------------------------------启动com.xiaomi.rlluncher的进程的events log----------------------------------------------------01-26 10:01:16.854   651   697 I am_uid_running: 1004401-26 10:01:16.958   651   705 I am_proc_start: [0,5887,10044,com.xiaomi.rlluncher,activity,&#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;]01-26 10:01:17.099   651  5692 I am_proc_bound: [0,5887,com.xiaomi.rlluncher]01-26 10:01:17.165   651  5692 I am_restart_activity: [0,88981503,36,com.xiaomi.rlluncher/.MainActivity]01-26 10:01:17.185   651  5692 I am_set_resumed_activity: [0,com.xiaomi.rlluncher/.MainActivity,minimalResumeActivityLocked]01-26 10:01:17.323   651   697 I am_uid_active: 10044---------------------------------------------------------------------------------------------//启动rlluncher的activity，进入launch-oncreate流程01-26 10:01:17.823  5887  5887 D TransactionExecutor: tId:-2061966625 Start resolving transaction01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625 ClientTransaction&#123;01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625   callbacks=[01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625     LaunchActivityItem&#123;intent=Intent &#123; act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.xiaomi.rlluncher/.MainActivity &#125;,ident=88981503,info=ActivityInfo&#123;d4439be com.xiaomi.rlluncher.MainActivity&#125;,curConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.4&#125;,overrideConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.1&#125;,referrer=com.android.shell,procState=21,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,profilerInfo=null assistToken=android.os.BinderProxy@4ca2140&#125;01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625   ]01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625   stateRequest=ResumeActivityItem&#123;procState=-1,updateProcState=false,isForward=true&#125;01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625 &#125;01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625 Target activity: Not found for token: android.os.BinderProxy@7b1d87901-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625 Resolving callbacks in transaction01-26 10:01:17.826  5887  5887 D TransactionExecutor: tId:-2061966625 Resolving callback: LaunchActivityItem&#123;intent=Intent &#123; act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.xiaomi.rlluncher/.MainActivity &#125;,ident=88981503,info=ActivityInfo&#123;d4439be com.xiaomi.rlluncher.MainActivity&#125;,curConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.4&#125;,overrideConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.1&#125;,referrer=com.android.shell,procState=21,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,profilerInfo=null assistToken=android.os.BinderProxy@4ca2140&#125;01-26 10:01:17.827  5887  5887 V  jdfu   : Handling Launch of ActivityRecord&#123;698aa1f token=android.os.BinderProxy@7b1d879 &#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;&#125;01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3395)01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:83)01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:135)01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.os.Handler.dispatchMessage(Handler.java:107)01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.os.Looper.loop(Looper.java:214)01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.ActivityThread.main(ActivityThread.java:7391)01-26 10:01:17.828  5887  5887 V  jdfu STACK : java.lang.reflect.Method.invoke(Native Method)01-26 10:01:17.828  5887  5887 V  jdfu STACK : com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)01-26 10:01:17.828  5887  5887 V  jdfu STACK : com.android.internal.os.ZygoteInit.main(ZygoteInit.java:958)01-26 10:01:18.642  5887  5887 I jdfu    : onCreate01-26 10:01:18.642  5887  5887 I am_on_create_called: [0,com.xiaomi.rlluncher.MainActivity,performCreate]01-26 10:01:18.654  5887  5887 D TransactionExecutor: tId:-2061966625 Resolving lifecycle state: ResumeActivityItem&#123;procState=-1,updateProcState=false,isForward=true&#125; for activity: .MainActivity01-26 10:01:18.654  5887  5887 D TransactionExecutor: tId:-2061966625 Cycle activity: .MainActivity from: ON_CREATE to: ON_RESUME excludeLastState: true//注意performLifecycleSequence打印了2,表示直接调用到handleStartActivity流程01-26 10:01:18.655  5887  5887 D  jdfu   : acitivity = ActivityRecord&#123;698aa1f token=android.os.BinderProxy@7b1d879 &#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;&#125; performLifecycleSequence: 2 ,01-26 10:01:18.655  5887  5887 D TransactionExecutor: tId:-2061966625 Transitioning activity: .MainActivity to state: ON_START01-26 10:01:18.655  5887  5887 V  jdfu   : Handling Start of ActivityRecord&#123;698aa1f token=android.os.BinderProxy@7b1d879 &#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;&#125;01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.ActivityThread.handleStartActivity(ActivityThread.java:3286)01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.performLifecycleSequence(TransactionExecutor.java:226)01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.cycleToPath(TransactionExecutor.java:201)01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:173)01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.os.Handler.dispatchMessage(Handler.java:107)01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.os.Looper.loop(Looper.java:214)01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.ActivityThread.main(ActivityThread.java:7391)01-26 10:01:18.656  5887  5887 V  jdfu STACK : java.lang.reflect.Method.invoke(Native Method)01-26 10:01:18.656  5887  5887 V  jdfu STACK : com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)01-26 10:01:18.656  5887  5887 V  jdfu STACK : com.android.internal.os.ZygoteInit.main(ZygoteInit.java:958)01-26 10:01:18.659  5887  5887 I jdfu    : onStart01-26 10:01:18.659  5887  5887 I am_on_start_called: [0,com.xiaomi.rlluncher.MainActivity,handleStartActivity]01-26 10:01:18.663  5887  5887 I jdfu    : onResume01-26 10:01:18.663  5887  5887 I am_on_resume_called: [0,com.xiaomi.rlluncher.MainActivity,RESUME_ACTIVITY]01-26 10:01:18.675  5887  5887 V  jdfu   : Handling Resume of ActivityRecord&#123;698aa1f token=android.os.BinderProxy@7b1d879 &#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;&#125;01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.ActivityThread.handleResumeActivity(ActivityThread.java:4253)01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.servertransaction.ResumeActivityItem.execute(ResumeActivityItem.java:52)01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:176)01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.os.Handler.dispatchMessage(Handler.java:107)01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.os.Looper.loop(Looper.java:214)01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.ActivityThread.main(ActivityThread.java:7391)01-26 10:01:18.676  5887  5887 V  jdfu STACK : java.lang.reflect.Method.invoke(Native Method)01-26 10:01:18.676  5887  5887 V  jdfu STACK : com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)01-26 10:01:18.676  5887  5887 V  jdfu STACK : com.android.internal.os.ZygoteInit.main(ZygoteInit.java:958)01-26 10:01:18.715  5887  5887 D TransactionExecutor: tId:-2061966625 End resolving transaction------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------01-26 10:01:18.715  5887  5887 D TransactionExecutor: tId:33666 Start resolving transaction01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 ClientTransaction&#123;01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666   callbacks=[01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666     TopResumedActivityChangeItem&#123;onTop=true&#125;01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666   ]01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666   stateRequest=null01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 &#125;01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 Target activity: com.xiaomi.rlluncher.MainActivity01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 Resolving callbacks in transaction01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 Resolving callback: TopResumedActivityChangeItem&#123;onTop=true&#125;01-26 10:01:18.716  5887  5887 I am_on_top_resumed_gained_called: [0,com.xiaomi.rlluncher.MainActivity,topStateChangedWhenResumed]01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 End resolving transaction------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ 01-26 10:01:19.061   651   703 I am_activity_launch_time: [0,88981503,com.xiaomi.rlluncher/.MainActivity,2466]01-26 10:01:19.206   651  1469 I am_stop_activity: [0,178865534,com.mitv.tvhome/.MainActivityUserMode]01-26 10:01:19.210  1825  1825 D TransactionExecutor: tId:32705 Start resolving transaction01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 ClientTransaction&#123;01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705   callbacks=[]01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705   stateRequest=StopActivityItem&#123;showWindow=false,configChanges=0&#125;01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 &#125;01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 Target activity: com.mitv.tvhome.MainActivityUserMode01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 Resolving lifecycle state: StopActivityItem&#123;showWindow=false,configChanges=0&#125; for activity: .MainActivityUserMode01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 Cycle activity: .MainActivityUserMode from: ON_PAUSE to: ON_STOP excludeLastState: true01-26 10:01:19.211  1825  1825 D  jdfu   : acitivity = ActivityRecord&#123;7950ddf token=android.os.BinderProxy@8b12639 &#123;com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode&#125;&#125; performLifecycleSequence:01-26 10:01:19.211  1825  1825 V  jdfu   : Handling Stop of ActivityRecord&#123;7950ddf token=android.os.BinderProxy@8b12639 &#123;com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode&#125;&#125;01-26 10:01:19.212  1825  1825 V  jdfu STACK : android.app.ActivityThread.handleStopActivity(ActivityThread.java:4696)01-26 10:01:19.212  1825  1825 V  jdfu STACK : android.app.servertransaction.StopActivityItem.execute(StopActivityItem.java:41)\n此时dumpsys activity a输出如下：[title] [url] [link text] [additional options]123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146baymax:/ # dumpsys activity a                                                                                                                    ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)Display #0 (activities from top to bottom):   Stack #1: type=standard mode=fullscreen  isSleeping=false  mBounds=Rect(0, 0 - 0, 0)    Task id #36    mBounds=Rect(0, 0 - 0, 0)    mMinWidth=-1    mMinHeight=-1    mLastNonFullscreenBounds=null    * TaskRecord&#123;39d3c15 #36 A=com.xiaomi.rlluncher U=0 StackId=1 sz=1&#125;      userId=0 effectiveUid=u0a44 mCallingUid=0 mUserSetupComplete=true mCallingPackage=com.android.shell      affinity=com.xiaomi.rlluncher      intent=&#123;act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.xiaomi.rlluncher/.MainActivity&#125;      mActivityComponent=com.xiaomi.rlluncher/.MainActivity      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=1      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE      Activities=[ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;]      askedCompatMode=false inRecents=true isAvailable=true      mRootProcess=ProcessRecord&#123;95b5493 5887:com.xiaomi.rlluncher/u0a44&#125;      stackId=1      hasBeenVisible=true mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true lastActiveTime=73730903 (inactive for 11s)      * Hist #0: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;          packageName=com.xiaomi.rlluncher processName=com.xiaomi.rlluncher          launchedFromUid=0 launchedFromPackage=com.android.shell userId=0          app=ProcessRecord&#123;95b5493 5887:com.xiaomi.rlluncher/u0a44&#125;          Intent &#123; act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.xiaomi.rlluncher/.MainActivity &#125;          frontOfTask=true task=TaskRecord&#123;39d3c15 #36 A=com.xiaomi.rlluncher U=0 StackId=1 sz=1&#125;          taskAffinity=com.xiaomi.rlluncher          mActivityComponent=com.xiaomi.rlluncher/.MainActivity          baseDir=/data/app/com.xiaomi.rlluncher-AOqDfAUf9xgKnrvjn-ufaQ==/base.apk          dataDir=/data/user/0/com.xiaomi.rlluncher          stateNotNeeded=false componentSpecified=true mActivityType=standard          compat=&#123;320dpi always-compat&#125; labelRes=0x7f0e001b icon=0x7f0c0000 theme=0x7f0f01d2          mLastReportedConfigurations:           mGlobalConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.4&#125;           mOverrideConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.1&#125;          CurrentConfiguration=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.1&#125;          taskDescription: label=&quot;null&quot; icon=null iconResource=0 iconFilename=null primaryColor=ff6200ee           backgroundColor=ffffffff           statusBarColor=ff3700b3           navigationBarColor=ff000000          launchFailed=false launchCount=0 lastLaunchTime=-36m45s916ms          haveState=false icicle=null          state=RESUMED stopped=false delayedResume=false finishing=false          keysPaused=false inHistory=true visible=true sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_REMOVED          fullscreen=true noDisplay=false immersive=false launchMode=2          frozenBeforeDestroy=false forceNewConfig=false          mActivityType=standard           nowVisible=true lastVisibleTime=-11s379ms          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false     Running activities (most recent first):      TaskRecord&#123;39d3c15 #36 A=com.xiaomi.rlluncher U=0 StackId=1 sz=1&#125;        Run #0: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;     mResumedActivity: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;    mLastPausedActivity: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;   Stack #0: type=home mode=fullscreen  isSleeping=false  mBounds=Rect(0, 0 - 0, 0)     Task id #35    mBounds=Rect(0, 0 - 0, 0)    mMinWidth=-1    mMinHeight=-1    mLastNonFullscreenBounds=null    * TaskRecord&#123;cd3632c #35 A=com.mitv.tvhome U=0 StackId=0 sz=1&#125;      userId=0 effectiveUid=1000 mCallingUid=0 mUserSetupComplete=true mCallingPackage=null      affinity=com.mitv.tvhome      intent=&#123;act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.mitv.tvhome/.MainActivityUserMode&#125;      mActivityComponent=com.mitv.tvhome/.MainActivityUserMode      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=2      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE      Activities=[ActivityRecord&#123;aa9457e u0 com.mitv.tvhome/.MainActivityUserMode t35&#125;]      askedCompatMode=false inRecents=true isAvailable=true      mRootProcess=ProcessRecord&#123;c44a133 1825:com.mitv.tvhome/1000&#125;      stackId=0      hasBeenVisible=true mResizeMode=RESIZE_MODE_UNRESIZEABLE mSupportsPictureInPicture=false isResizeable=false lastActiveTime=71536281 (inactive for 2206s)      * Hist #0: ActivityRecord&#123;aa9457e u0 com.mitv.tvhome/.MainActivityUserMode t35&#125;          packageName=com.mitv.tvhome processName=com.mitv.tvhome          launchedFromUid=0 launchedFromPackage=null userId=0          app=ProcessRecord&#123;c44a133 1825:com.mitv.tvhome/1000&#125;          Intent &#123; act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.mitv.tvhome/.MainActivityUserMode &#125;          frontOfTask=true task=TaskRecord&#123;cd3632c #35 A=com.mitv.tvhome U=0 StackId=0 sz=1&#125;          taskAffinity=com.mitv.tvhome          mActivityComponent=com.mitv.tvhome/.MainActivityUserMode          baseDir=/data/app/com.mitv.tvhome-JJqipFCe56cMkiK5KVPfVQ==/base.apk          dataDir=/data/user/0/com.mitv.tvhome          stateNotNeeded=true componentSpecified=false mActivityType=home          compat=&#123;320dpi always-compat&#125; labelRes=0x7f10004a icon=0x7f0802cc theme=0x7f110006          mLastReportedConfigurations:           mGlobalConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.4&#125;           mOverrideConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.3&#125;          CurrentConfiguration=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.3&#125;          RequestedOverrideConfiguration=&#123;0.0 ?mcc?mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig=&#123; mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mWindowingMode=undefined mDisplayWindowingMode=undefined mActivityType=home mAlwaysOnTop=undefined mRotation=undefined&#125;&#125;          taskDescription: label=&quot;null&quot; icon=null iconResource=0 iconFilename=null primaryColor=ff222222           backgroundColor=ff000000           statusBarColor=ff000000           navigationBarColor=ff000000          launchFailed=false launchCount=0 lastLaunchTime=-38m47s640ms          haveState=true icicle=Bundle[mParcelledData.dataSize=18976]          state=STOPPED stopped=true delayedResume=false finishing=false          keysPaused=false inHistory=true visible=false sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_NOT_SHOWN          fullscreen=true noDisplay=false immersive=false launchMode=2          frozenBeforeDestroy=false forceNewConfig=false          mActivityType=home           nowVisible=false lastVisibleTime=-38m34s772ms          resizeMode=RESIZE_MODE_UNRESIZEABLE          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false          maxAspectRatio=1.86          minAspectRatio=1.333     Running activities (most recent first):      TaskRecord&#123;cd3632c #35 A=com.mitv.tvhome U=0 StackId=0 sz=1&#125;        Run #0: ActivityRecord&#123;aa9457e u0 com.mitv.tvhome/.MainActivityUserMode t35&#125;     mLastPausedActivity: ActivityRecord&#123;aa9457e u0 com.mitv.tvhome/.MainActivityUserMode t35&#125;  ResumedActivity:ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;   ResumedActivity: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125; ActivityStackSupervisor state:  topDisplayFocusedStack=ActivityStack&#123;d4a1cc stackId=1 type=standard mode=fullscreen visible=true translucent=false, 1 tasks&#125;  displayId=0 stacks=2   mHomeStack=ActivityStack&#123;e1533a2 stackId=0 type=home mode=fullscreen visible=false translucent=true, 1 tasks&#125;   mPreferredTopFocusableStack=ActivityStack&#123;d4a1cc stackId=1 type=standard mode=fullscreen visible=true translucent=false, 1 tasks&#125;   mLastFocusedStack=ActivityStack&#123;d4a1cc stackId=1 type=standard mode=fullscreen visible=true translucent=false, 1 tasks&#125;  mCurTaskIdForUser=&#123;0=38&#125;  mUserStackInFront=&#123;&#125;  isHomeRecentsComponent=false  KeyguardController:    mKeyguardShowing=false    mAodShowing=false    mKeyguardGoingAway=false    Occluded=false DismissingKeyguardActivity=null at display=0    mDismissalRequested=false    mVisibilityTransactionDepth=0  LockTaskController    mLockTaskModeState=NONE    mLockTaskModeTasks=    mLockTaskPackages (userId:packages)=","dateCreated":"2022-02-19T16:10:00+08:00","dateModified":"2022-02-19T18:27:53+08:00","datePublished":"2022-02-19T16:10:00+08:00","description":"介绍启动一个应用时应用端进程的调用核心链路","headline":"启动应用的客户端表现","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"http://fjddhd.github.io/2022/02/19/AMS/"},"publisher":{"@type":"Organization","name":"付京东","sameAs":["https://github.com/fjddhd","#499838742@qq.com"]},"url":"http://fjddhd.github.io/2022/02/19/AMS/","keywords":"AMS"}</script>
+    <meta name="description" content="介绍启动一个应用时应用端进程的调用核心链路">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="启动应用的客户端表现">
+<meta property="og:url" content="http://fjddhd.github.io/2022/02/19/AMS/index.html">
+<meta property="og:site_name" content="fjd">
+<meta property="og:description" content="介绍启动一个应用时应用端进程的调用核心链路">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-02-19T08:10:00.000Z">
+<meta property="article:modified_time" content="2022-02-19T10:27:53.159Z">
+<meta property="article:author" content="付京东">
+<meta property="article:tag" content="AMS">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+    
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-xlptrrjd9q6uwp7lzn6v6ieao5bdm4kd7q6xalesgbriyccg1p3lqwp575hx.min.css">
+
+    <!--STYLES END-->
+    
+
+    
+
+    
+        
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            fjd
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="打开链接: /#about"
+            >
+        
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="首页"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">首页</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="分类"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">分类</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="标签"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">标签</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="归档"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">归档</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="关于"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">关于</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/fjddhd"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#499838742@qq.com"
+                            
+                            rel="noopener"
+                            title="邮箱"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">邮箱</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            启动应用的客户端表现
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2022-02-19T16:10:00+08:00">
+	
+		    2月 19, 2022
+    	
+    </time>
+    
+        <span>发布在 </span>
+        
+    <a class="category-link" href="/categories/AMS/">AMS</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>介绍启动一个应用时应用端进程的调用核心链路</p>
+<span id="more"></span>
+<p>代码基于aosp10代码</p>
+<ul>
+<li><p>在activitythread的handle（launch、pause、stop、resume、start）中加jdfu这个TAG的日志和调用堆栈</p>
+</li>
+<li><p>从tvhome开始启动rlluncher应用</p>
+</li>
+<li><p>抓日志过滤规则如下：</p>
+</li>
+</ul>
+<blockquote>
+<p>logcat -b all | grep -iE ‘ jdfu|TransactionExecutor|am_|wm_’ | grep -v ‘am_pss’</p>
+</blockquote>
+<h4 id="日志输出："><a href="#日志输出：" class="headerlink" title="日志输出："></a>日志输出：</h4><figure class="highlight plaintext"><figcaption><span>[title] [url] [link text] [additional options]</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br></pre></td><td class="code"><pre><span class="line">01-26 10:01:16.722   651  5692 I wm_stack_created: 1</span><br><span class="line">01-26 10:01:16.740   651  5692 I wm_task_created: [36,1]</span><br><span class="line">01-26 10:01:16.743   651  5692 I wm_task_moved: [36,0,2147483647]</span><br><span class="line">01-26 10:01:16.747   651  5692 I am_focused_stack: [0,0,1,0,reuseOrNewTask]</span><br><span class="line">01-26 10:01:16.751   651  5692 I am_create_task: [0,36]</span><br><span class="line">01-26 10:01:16.751   651  5692 I am_create_activity: [0,88981503,36,com.xiaomi.rlluncher/.MainActivity,android.intent.action.MAIN,NULL,NULL,268435456]</span><br><span class="line">01-26 10:01:16.758   651  5692 I wm_task_moved: [36,0,2147483647]</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line">//注意：同一tid的start和end日志是TransactionExecutor的execute方法调用的区间日志，每个tid为一个atms（activityStackSupervisor活ActivityRecord等）发来的transaction</span><br><span class="line">//该方法主要调用 executeCallbacks(transaction) 和 executeLifecycleState(transaction)这两个方法</span><br><span class="line">//executeCallbacks中会从transaction中拿callbacks，调用对应callback的execute走AT.handle对应生命周期、callback.postExecute</span><br><span class="line">//executeLifecycleState中会从transaction中拿lifecycleItem（不同类型的LI对应不通生命周期），依次走cycleToPath-&gt;performLifecycleSequence、LI.execute走AT.handle对应生命周期、LI.postExecute</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line">01-26 10:01:16.768  1825  1825 D TransactionExecutor: tId:33635 Start resolving transaction</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 ClientTransaction&#123;</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635   callbacks=[</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635     TopResumedActivityChangeItem&#123;onTop=false&#125;</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635   ]</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635   stateRequest=null</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 &#125;</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 Target activity: com.mitv.tvhome.MainActivityUserMode</span><br><span class="line">//executeCallbacks方法内打印，这个回调用TvHome的onTopResumedActivityChange生命周期回调</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 Resolving callbacks in transaction</span><br><span class="line">01-26 10:01:16.769  1825  1825 D TransactionExecutor: tId:33635 Resolving callback: TopResumedActivityChangeItem&#123;onTop=false&#125;</span><br><span class="line">01-26 10:01:16.769  1825  1825 I am_on_top_resumed_lost_called: [0,com.mitv.tvhome.MainActivityUserMode,topStateChangedWhenResumed]</span><br><span class="line">01-26 10:01:16.769   651  5692 I am_pause_activity: [0,178865534,com.mitv.tvhome/.MainActivityUserMode,userLeaving=true]</span><br><span class="line">01-26 10:01:16.787  1825  1825 D TransactionExecutor: tId:33635 End resolving transaction</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line">//executeLifecycleState方法内打印，这个会走performLifecycleSequence</span><br><span class="line">01-26 10:01:16.795  1825  1825 D TransactionExecutor: tId:15717186 Start resolving transaction</span><br><span class="line">01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 ClientTransaction&#123;</span><br><span class="line">01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186   callbacks=[]</span><br><span class="line">01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186   stateRequest=PauseActivityItem&#123;finished=false,userLeaving=true,configChanges=0,dontReport=false&#125;</span><br><span class="line">01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 &#125;</span><br><span class="line">01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 Target activity: com.mitv.tvhome.MainActivityUserMode</span><br><span class="line">01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 Resolving lifecycle state: PauseActivityItem&#123;finished=false,userLeaving=true,configChanges=0,dontReport=false&#125; for activity: .MainActivityUserMode</span><br><span class="line">01-26 10:01:16.796  1825  1825 D TransactionExecutor: tId:15717186 Cycle activity: .MainActivityUserMode from: ON_RESUME to: ON_PAUSE excludeLastState: true</span><br><span class="line">01-26 10:01:16.797  1825  1825 D  jdfu   : acitivity = ActivityRecord&#123;7950ddf token=android.os.BinderProxy@8b12639 &#123;com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode&#125;&#125; performLifecycleSequence:</span><br><span class="line">//transaction在cycleToPath中的getLifecyclePath拿不到Path，所以这个流程下的performLifecycleSequence没进任何生命周期流程</span><br><span class="line">//executeLifecycleState中拿到了PauseActivityItem，调用其execute进入pause流程</span><br><span class="line">01-26 10:01:16.797  1825  1825 V  jdfu   : Handling Pause of ActivityRecord&#123;7950ddf token=android.os.BinderProxy@8b12639 &#123;com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode&#125;&#125;</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.ActivityThread.handlePauseActivity(ActivityThread.java:4423)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.servertransaction.PauseActivityItem.execute(PauseActivityItem.java:46)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:176)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.os.Handler.dispatchMessage(Handler.java:107)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.os.Looper.loop(Looper.java:214)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : android.app.ActivityThread.main(ActivityThread.java:7391)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : java.lang.reflect.Method.invoke(Native Method)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)</span><br><span class="line">01-26 10:01:16.798  1825  1825 V  jdfu STACK : com.android.internal.os.ZygoteInit.main(ZygoteInit.java:958)</span><br><span class="line">01-26 10:01:16.824  1825  1825 W System.err:    at android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:176)</span><br><span class="line">01-26 10:01:16.824  1825  1825 W System.err:    at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)</span><br><span class="line">01-26 10:01:16.827  1825  1825 I am_on_paused_called: [0,com.mitv.tvhome.MainActivityUserMode,performPause]</span><br><span class="line">01-26 10:01:16.846   651   747 I am_add_to_stopping: [0,178865534,com.mitv.tvhome/.MainActivityUserMode,makeInvisible]</span><br><span class="line">01-26 10:01:16.852  1825  1825 D TransactionExecutor: tId:15717186 End resolving transaction</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line"> </span><br><span class="line">-----------------------------------------启动com.xiaomi.rlluncher的进程的events log----------------------------------------------------</span><br><span class="line">01-26 10:01:16.854   651   697 I am_uid_running: 10044</span><br><span class="line">01-26 10:01:16.958   651   705 I am_proc_start: [0,5887,10044,com.xiaomi.rlluncher,activity,&#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;]</span><br><span class="line">01-26 10:01:17.099   651  5692 I am_proc_bound: [0,5887,com.xiaomi.rlluncher]</span><br><span class="line">01-26 10:01:17.165   651  5692 I am_restart_activity: [0,88981503,36,com.xiaomi.rlluncher/.MainActivity]</span><br><span class="line">01-26 10:01:17.185   651  5692 I am_set_resumed_activity: [0,com.xiaomi.rlluncher/.MainActivity,minimalResumeActivityLocked]</span><br><span class="line">01-26 10:01:17.323   651   697 I am_uid_active: 10044</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line">//启动rlluncher的activity，进入launch-oncreate流程</span><br><span class="line">01-26 10:01:17.823  5887  5887 D TransactionExecutor: tId:-2061966625 Start resolving transaction</span><br><span class="line">01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625 ClientTransaction&#123;</span><br><span class="line">01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625   callbacks=[</span><br><span class="line">01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625     LaunchActivityItem&#123;intent=Intent &#123; act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.xiaomi.rlluncher/.MainActivity &#125;,ident=88981503,info=ActivityInfo&#123;d4439be com.xiaomi.rlluncher.MainActivity&#125;,curConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.4&#125;,overrideConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.1&#125;,referrer=com.android.shell,procState=21,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,profilerInfo=null assistToken=android.os.BinderProxy@4ca2140&#125;</span><br><span class="line">01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625   ]</span><br><span class="line">01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625   stateRequest=ResumeActivityItem&#123;procState=-1,updateProcState=false,isForward=true&#125;</span><br><span class="line">01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625 &#125;</span><br><span class="line">01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625 Target activity: Not found for token: android.os.BinderProxy@7b1d879</span><br><span class="line">01-26 10:01:17.825  5887  5887 D TransactionExecutor: tId:-2061966625 Resolving callbacks in transaction</span><br><span class="line">01-26 10:01:17.826  5887  5887 D TransactionExecutor: tId:-2061966625 Resolving callback: LaunchActivityItem&#123;intent=Intent &#123; act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.xiaomi.rlluncher/.MainActivity &#125;,ident=88981503,info=ActivityInfo&#123;d4439be com.xiaomi.rlluncher.MainActivity&#125;,curConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.4&#125;,overrideConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.1&#125;,referrer=com.android.shell,procState=21,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,profilerInfo=null assistToken=android.os.BinderProxy@4ca2140&#125;</span><br><span class="line">01-26 10:01:17.827  5887  5887 V  jdfu   : Handling Launch of ActivityRecord&#123;698aa1f token=android.os.BinderProxy@7b1d879 &#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;&#125;</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3395)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:83)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:135)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.os.Handler.dispatchMessage(Handler.java:107)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.os.Looper.loop(Looper.java:214)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : android.app.ActivityThread.main(ActivityThread.java:7391)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : java.lang.reflect.Method.invoke(Native Method)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)</span><br><span class="line">01-26 10:01:17.828  5887  5887 V  jdfu STACK : com.android.internal.os.ZygoteInit.main(ZygoteInit.java:958)</span><br><span class="line">01-26 10:01:18.642  5887  5887 I jdfu    : onCreate</span><br><span class="line">01-26 10:01:18.642  5887  5887 I am_on_create_called: [0,com.xiaomi.rlluncher.MainActivity,performCreate]</span><br><span class="line">01-26 10:01:18.654  5887  5887 D TransactionExecutor: tId:-2061966625 Resolving lifecycle state: ResumeActivityItem&#123;procState=-1,updateProcState=false,isForward=true&#125; for activity: .MainActivity</span><br><span class="line">01-26 10:01:18.654  5887  5887 D TransactionExecutor: tId:-2061966625 Cycle activity: .MainActivity from: ON_CREATE to: ON_RESUME excludeLastState: true</span><br><span class="line">//注意performLifecycleSequence打印了2,表示直接调用到handleStartActivity流程</span><br><span class="line">01-26 10:01:18.655  5887  5887 D  jdfu   : acitivity = ActivityRecord&#123;698aa1f token=android.os.BinderProxy@7b1d879 &#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;&#125; performLifecycleSequence: 2 ,</span><br><span class="line">01-26 10:01:18.655  5887  5887 D TransactionExecutor: tId:-2061966625 Transitioning activity: .MainActivity to state: ON_START</span><br><span class="line">01-26 10:01:18.655  5887  5887 V  jdfu   : Handling Start of ActivityRecord&#123;698aa1f token=android.os.BinderProxy@7b1d879 &#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;&#125;</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.ActivityThread.handleStartActivity(ActivityThread.java:3286)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.performLifecycleSequence(TransactionExecutor.java:226)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.cycleToPath(TransactionExecutor.java:201)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:173)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.os.Handler.dispatchMessage(Handler.java:107)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.os.Looper.loop(Looper.java:214)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : android.app.ActivityThread.main(ActivityThread.java:7391)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : java.lang.reflect.Method.invoke(Native Method)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)</span><br><span class="line">01-26 10:01:18.656  5887  5887 V  jdfu STACK : com.android.internal.os.ZygoteInit.main(ZygoteInit.java:958)</span><br><span class="line">01-26 10:01:18.659  5887  5887 I jdfu    : onStart</span><br><span class="line">01-26 10:01:18.659  5887  5887 I am_on_start_called: [0,com.xiaomi.rlluncher.MainActivity,handleStartActivity]</span><br><span class="line">01-26 10:01:18.663  5887  5887 I jdfu    : onResume</span><br><span class="line">01-26 10:01:18.663  5887  5887 I am_on_resume_called: [0,com.xiaomi.rlluncher.MainActivity,RESUME_ACTIVITY]</span><br><span class="line">01-26 10:01:18.675  5887  5887 V  jdfu   : Handling Resume of ActivityRecord&#123;698aa1f token=android.os.BinderProxy@7b1d879 &#123;com.xiaomi.rlluncher/com.xiaomi.rlluncher.MainActivity&#125;&#125;</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.ActivityThread.handleResumeActivity(ActivityThread.java:4253)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.servertransaction.ResumeActivityItem.execute(ResumeActivityItem.java:52)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:176)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.os.Handler.dispatchMessage(Handler.java:107)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.os.Looper.loop(Looper.java:214)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : android.app.ActivityThread.main(ActivityThread.java:7391)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : java.lang.reflect.Method.invoke(Native Method)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)</span><br><span class="line">01-26 10:01:18.676  5887  5887 V  jdfu STACK : com.android.internal.os.ZygoteInit.main(ZygoteInit.java:958)</span><br><span class="line">01-26 10:01:18.715  5887  5887 D TransactionExecutor: tId:-2061966625 End resolving transaction</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line">01-26 10:01:18.715  5887  5887 D TransactionExecutor: tId:33666 Start resolving transaction</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 ClientTransaction&#123;</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666   callbacks=[</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666     TopResumedActivityChangeItem&#123;onTop=true&#125;</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666   ]</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666   stateRequest=null</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 &#125;</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 Target activity: com.xiaomi.rlluncher.MainActivity</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 Resolving callbacks in transaction</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 Resolving callback: TopResumedActivityChangeItem&#123;onTop=true&#125;</span><br><span class="line">01-26 10:01:18.716  5887  5887 I am_on_top_resumed_gained_called: [0,com.xiaomi.rlluncher.MainActivity,topStateChangedWhenResumed]</span><br><span class="line">01-26 10:01:18.716  5887  5887 D TransactionExecutor: tId:33666 End resolving transaction</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line">---------------------------------------------------------------------------------------------</span><br><span class="line"> </span><br><span class="line">01-26 10:01:19.061   651   703 I am_activity_launch_time: [0,88981503,com.xiaomi.rlluncher/.MainActivity,2466]</span><br><span class="line">01-26 10:01:19.206   651  1469 I am_stop_activity: [0,178865534,com.mitv.tvhome/.MainActivityUserMode]</span><br><span class="line">01-26 10:01:19.210  1825  1825 D TransactionExecutor: tId:32705 Start resolving transaction</span><br><span class="line">01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 ClientTransaction&#123;</span><br><span class="line">01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705   callbacks=[]</span><br><span class="line">01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705   stateRequest=StopActivityItem&#123;showWindow=false,configChanges=0&#125;</span><br><span class="line">01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 &#125;</span><br><span class="line">01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 Target activity: com.mitv.tvhome.MainActivityUserMode</span><br><span class="line">01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 Resolving lifecycle state: StopActivityItem&#123;showWindow=false,configChanges=0&#125; for activity: .MainActivityUserMode</span><br><span class="line">01-26 10:01:19.211  1825  1825 D TransactionExecutor: tId:32705 Cycle activity: .MainActivityUserMode from: ON_PAUSE to: ON_STOP excludeLastState: true</span><br><span class="line">01-26 10:01:19.211  1825  1825 D  jdfu   : acitivity = ActivityRecord&#123;7950ddf token=android.os.BinderProxy@8b12639 &#123;com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode&#125;&#125; performLifecycleSequence:</span><br><span class="line">01-26 10:01:19.211  1825  1825 V  jdfu   : Handling Stop of ActivityRecord&#123;7950ddf token=android.os.BinderProxy@8b12639 &#123;com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode&#125;&#125;</span><br><span class="line">01-26 10:01:19.212  1825  1825 V  jdfu STACK : android.app.ActivityThread.handleStopActivity(ActivityThread.java:4696)</span><br><span class="line">01-26 10:01:19.212  1825  1825 V  jdfu STACK : android.app.servertransaction.StopActivityItem.execute(StopActivityItem.java:41)</span><br></pre></td></tr></table></figure>
+<h4 id="此时dumpsys-activity-a输出如下："><a href="#此时dumpsys-activity-a输出如下：" class="headerlink" title="此时dumpsys activity a输出如下："></a>此时dumpsys activity a输出如下：</h4><figure class="highlight plaintext"><figcaption><span>[title] [url] [link text] [additional options]</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br></pre></td><td class="code"><pre><span class="line">baymax:/ # dumpsys activity a                                                                                                                    </span><br><span class="line">ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)</span><br><span class="line">Display #0 (activities from top to bottom):</span><br><span class="line"> </span><br><span class="line">  Stack #1: type=standard mode=fullscreen</span><br><span class="line">  isSleeping=false</span><br><span class="line">  mBounds=Rect(0, 0 - 0, 0)</span><br><span class="line">    Task id #36</span><br><span class="line">    mBounds=Rect(0, 0 - 0, 0)</span><br><span class="line">    mMinWidth=-1</span><br><span class="line">    mMinHeight=-1</span><br><span class="line">    mLastNonFullscreenBounds=null</span><br><span class="line">    * TaskRecord&#123;39d3c15 #36 A=com.xiaomi.rlluncher U=0 StackId=1 sz=1&#125;</span><br><span class="line">      userId=0 effectiveUid=u0a44 mCallingUid=0 mUserSetupComplete=true mCallingPackage=com.android.shell</span><br><span class="line">      affinity=com.xiaomi.rlluncher</span><br><span class="line">      intent=&#123;act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.xiaomi.rlluncher/.MainActivity&#125;</span><br><span class="line">      mActivityComponent=com.xiaomi.rlluncher/.MainActivity</span><br><span class="line">      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=1</span><br><span class="line">      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE</span><br><span class="line">      Activities=[ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;]</span><br><span class="line">      askedCompatMode=false inRecents=true isAvailable=true</span><br><span class="line">      mRootProcess=ProcessRecord&#123;95b5493 5887:com.xiaomi.rlluncher/u0a44&#125;</span><br><span class="line">      stackId=1</span><br><span class="line">      hasBeenVisible=true mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true lastActiveTime=73730903 (inactive for 11s)</span><br><span class="line">      * Hist #0: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;</span><br><span class="line">          packageName=com.xiaomi.rlluncher processName=com.xiaomi.rlluncher</span><br><span class="line">          launchedFromUid=0 launchedFromPackage=com.android.shell userId=0</span><br><span class="line">          app=ProcessRecord&#123;95b5493 5887:com.xiaomi.rlluncher/u0a44&#125;</span><br><span class="line">          Intent &#123; act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.xiaomi.rlluncher/.MainActivity &#125;</span><br><span class="line">          frontOfTask=true task=TaskRecord&#123;39d3c15 #36 A=com.xiaomi.rlluncher U=0 StackId=1 sz=1&#125;</span><br><span class="line">          taskAffinity=com.xiaomi.rlluncher</span><br><span class="line">          mActivityComponent=com.xiaomi.rlluncher/.MainActivity</span><br><span class="line">          baseDir=/data/app/com.xiaomi.rlluncher-AOqDfAUf9xgKnrvjn-ufaQ==/base.apk</span><br><span class="line">          dataDir=/data/user/0/com.xiaomi.rlluncher</span><br><span class="line">          stateNotNeeded=false componentSpecified=true mActivityType=standard</span><br><span class="line">          compat=&#123;320dpi always-compat&#125; labelRes=0x7f0e001b icon=0x7f0c0000 theme=0x7f0f01d2</span><br><span class="line">          mLastReportedConfigurations:</span><br><span class="line">           mGlobalConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.4&#125;</span><br><span class="line">           mOverrideConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.1&#125;</span><br><span class="line">          CurrentConfiguration=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.1&#125;</span><br><span class="line">          taskDescription: label=&quot;null&quot; icon=null iconResource=0 iconFilename=null primaryColor=ff6200ee</span><br><span class="line">           backgroundColor=ffffffff</span><br><span class="line">           statusBarColor=ff3700b3</span><br><span class="line">           navigationBarColor=ff000000</span><br><span class="line">          launchFailed=false launchCount=0 lastLaunchTime=-36m45s916ms</span><br><span class="line">          haveState=false icicle=null</span><br><span class="line">          state=RESUMED stopped=false delayedResume=false finishing=false</span><br><span class="line">          keysPaused=false inHistory=true visible=true sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_REMOVED</span><br><span class="line">          fullscreen=true noDisplay=false immersive=false launchMode=2</span><br><span class="line">          frozenBeforeDestroy=false forceNewConfig=false</span><br><span class="line">          mActivityType=standard</span><br><span class="line">           nowVisible=true lastVisibleTime=-11s379ms</span><br><span class="line">          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION</span><br><span class="line">          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false</span><br><span class="line"> </span><br><span class="line">    Running activities (most recent first):</span><br><span class="line">      TaskRecord&#123;39d3c15 #36 A=com.xiaomi.rlluncher U=0 StackId=1 sz=1&#125;</span><br><span class="line">        Run #0: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;</span><br><span class="line"> </span><br><span class="line">    mResumedActivity: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;</span><br><span class="line">    mLastPausedActivity: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;</span><br><span class="line"> </span><br><span class="line">  Stack #0: type=home mode=fullscreen</span><br><span class="line">  isSleeping=false</span><br><span class="line">  mBounds=Rect(0, 0 - 0, 0)</span><br><span class="line"> </span><br><span class="line">    Task id #35</span><br><span class="line">    mBounds=Rect(0, 0 - 0, 0)</span><br><span class="line">    mMinWidth=-1</span><br><span class="line">    mMinHeight=-1</span><br><span class="line">    mLastNonFullscreenBounds=null</span><br><span class="line">    * TaskRecord&#123;cd3632c #35 A=com.mitv.tvhome U=0 StackId=0 sz=1&#125;</span><br><span class="line">      userId=0 effectiveUid=1000 mCallingUid=0 mUserSetupComplete=true mCallingPackage=null</span><br><span class="line">      affinity=com.mitv.tvhome</span><br><span class="line">      intent=&#123;act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.mitv.tvhome/.MainActivityUserMode&#125;</span><br><span class="line">      mActivityComponent=com.mitv.tvhome/.MainActivityUserMode</span><br><span class="line">      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=2</span><br><span class="line">      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE</span><br><span class="line">      Activities=[ActivityRecord&#123;aa9457e u0 com.mitv.tvhome/.MainActivityUserMode t35&#125;]</span><br><span class="line">      askedCompatMode=false inRecents=true isAvailable=true</span><br><span class="line">      mRootProcess=ProcessRecord&#123;c44a133 1825:com.mitv.tvhome/1000&#125;</span><br><span class="line">      stackId=0</span><br><span class="line">      hasBeenVisible=true mResizeMode=RESIZE_MODE_UNRESIZEABLE mSupportsPictureInPicture=false isResizeable=false lastActiveTime=71536281 (inactive for 2206s)</span><br><span class="line">      * Hist #0: ActivityRecord&#123;aa9457e u0 com.mitv.tvhome/.MainActivityUserMode t35&#125;</span><br><span class="line">          packageName=com.mitv.tvhome processName=com.mitv.tvhome</span><br><span class="line">          launchedFromUid=0 launchedFromPackage=null userId=0</span><br><span class="line">          app=ProcessRecord&#123;c44a133 1825:com.mitv.tvhome/1000&#125;</span><br><span class="line">          Intent &#123; act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.mitv.tvhome/.MainActivityUserMode &#125;</span><br><span class="line">          frontOfTask=true task=TaskRecord&#123;cd3632c #35 A=com.mitv.tvhome U=0 StackId=0 sz=1&#125;</span><br><span class="line">          taskAffinity=com.mitv.tvhome</span><br><span class="line">          mActivityComponent=com.mitv.tvhome/.MainActivityUserMode</span><br><span class="line">          baseDir=/data/app/com.mitv.tvhome-JJqipFCe56cMkiK5KVPfVQ==/base.apk</span><br><span class="line">          dataDir=/data/user/0/com.mitv.tvhome</span><br><span class="line">          stateNotNeeded=true componentSpecified=false mActivityType=home</span><br><span class="line">          compat=&#123;320dpi always-compat&#125; labelRes=0x7f10004a icon=0x7f0802cc theme=0x7f110006</span><br><span class="line">          mLastReportedConfigurations:</span><br><span class="line">           mGlobalConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.4&#125;</span><br><span class="line">           mOverrideConfig=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.3&#125;</span><br><span class="line">          CurrentConfiguration=&#123;1.0 ?mcc?mnc [zh_CN] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig=&#123; mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0&#125; s.3&#125;</span><br><span class="line">          RequestedOverrideConfiguration=&#123;0.0 ?mcc?mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig=&#123; mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mWindowingMode=undefined mDisplayWindowingMode=undefined mActivityType=home mAlwaysOnTop=undefined mRotation=undefined&#125;&#125;</span><br><span class="line">          taskDescription: label=&quot;null&quot; icon=null iconResource=0 iconFilename=null primaryColor=ff222222</span><br><span class="line">           backgroundColor=ff000000</span><br><span class="line">           statusBarColor=ff000000</span><br><span class="line">           navigationBarColor=ff000000</span><br><span class="line">          launchFailed=false launchCount=0 lastLaunchTime=-38m47s640ms</span><br><span class="line">          haveState=true icicle=Bundle[mParcelledData.dataSize=18976]</span><br><span class="line">          state=STOPPED stopped=true delayedResume=false finishing=false</span><br><span class="line">          keysPaused=false inHistory=true visible=false sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_NOT_SHOWN</span><br><span class="line">          fullscreen=true noDisplay=false immersive=false launchMode=2</span><br><span class="line">          frozenBeforeDestroy=false forceNewConfig=false</span><br><span class="line">          mActivityType=home</span><br><span class="line">           nowVisible=false lastVisibleTime=-38m34s772ms</span><br><span class="line">          resizeMode=RESIZE_MODE_UNRESIZEABLE</span><br><span class="line">          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false</span><br><span class="line">          maxAspectRatio=1.86</span><br><span class="line">          minAspectRatio=1.333</span><br><span class="line"> </span><br><span class="line">    Running activities (most recent first):</span><br><span class="line">      TaskRecord&#123;cd3632c #35 A=com.mitv.tvhome U=0 StackId=0 sz=1&#125;</span><br><span class="line">        Run #0: ActivityRecord&#123;aa9457e u0 com.mitv.tvhome/.MainActivityUserMode t35&#125;</span><br><span class="line"> </span><br><span class="line">    mLastPausedActivity: ActivityRecord&#123;aa9457e u0 com.mitv.tvhome/.MainActivityUserMode t35&#125;</span><br><span class="line"> </span><br><span class="line"> ResumedActivity:ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;</span><br><span class="line"> </span><br><span class="line">  ResumedActivity: ActivityRecord&#123;54dbfff u0 com.xiaomi.rlluncher/.MainActivity t36&#125;</span><br><span class="line"> </span><br><span class="line">ActivityStackSupervisor state:</span><br><span class="line">  topDisplayFocusedStack=ActivityStack&#123;d4a1cc stackId=1 type=standard mode=fullscreen visible=true translucent=false, 1 tasks&#125;</span><br><span class="line">  displayId=0 stacks=2</span><br><span class="line">   mHomeStack=ActivityStack&#123;e1533a2 stackId=0 type=home mode=fullscreen visible=false translucent=true, 1 tasks&#125;</span><br><span class="line">   mPreferredTopFocusableStack=ActivityStack&#123;d4a1cc stackId=1 type=standard mode=fullscreen visible=true translucent=false, 1 tasks&#125;</span><br><span class="line">   mLastFocusedStack=ActivityStack&#123;d4a1cc stackId=1 type=standard mode=fullscreen visible=true translucent=false, 1 tasks&#125;</span><br><span class="line">  mCurTaskIdForUser=&#123;0=38&#125;</span><br><span class="line">  mUserStackInFront=&#123;&#125;</span><br><span class="line">  isHomeRecentsComponent=false  KeyguardController:</span><br><span class="line">    mKeyguardShowing=false</span><br><span class="line">    mAodShowing=false</span><br><span class="line">    mKeyguardGoingAway=false</span><br><span class="line">    Occluded=false DismissingKeyguardActivity=null at display=0</span><br><span class="line">    mDismissalRequested=false</span><br><span class="line">    mVisibilityTransactionDepth=0</span><br><span class="line">  LockTaskController</span><br><span class="line">    mLockTaskModeState=NONE</span><br><span class="line">    mLockTaskModeTasks=</span><br><span class="line">    mLockTaskPackages (userId:packages)=</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/AMS/" rel="tag">AMS</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Diesen Beitrag teilen"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://fjddhd.github.io/2022/02/19/AMS/&amp;title=启动应用的客户端表现"
+                    title="分享到 QQ"
+                    aria-label="分享到 QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2022 付京东. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Diesen Beitrag teilen"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://fjddhd.github.io/2022/02/19/AMS/&amp;title=启动应用的客户端表现"
+                    title="分享到 QQ"
+                    aria-label="分享到 QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=http://fjddhd.github.io/2022/02/19/AMS/&amp;title=启动应用的客户端表现"
+                        aria-label="分享到 QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <h4 id="about-card-name">付京东</h4>
+        
+            <div id="about-card-bio"><p>付京东，广东工业大学-计算机技术-研究生</p>
+</div>
+			<div id="about-card-bio"><p>2020年<strong>“华为杯”数学建模研赛三等奖</strong>、2021年<strong>华为软件精英挑战赛三等奖（作为队长）</strong></p>
+</div>
+			<div id="about-card-bio"><p>曾就职于 <strong>广州星河智联汽车科技有限公司（广汽&amp;讯飞）</strong> 负责<strong>高通</strong>平台车机（广汽量产车电动车型原厂搭载）安卓系统的拓展音频的framework模块开发</p>
+</div>
+			<div id="about-card-bio"><p>就职于 <strong>小米-电视部-系统研发部</strong> 参与所有<strong>小米&amp;红米电视</strong>以及<strong>盒子</strong>的国内产品的基础framework相关模块功能开发和系统稳定性维护</p>
+</div>
+			<div id="about-card-bio"><p>红米<strong>K40</strong>手机升S员工内测<strong>前三名</strong>，参与<strong>在研</strong>红米手机以及<strong>MIUI</strong>系统内测</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Xiaomi</p>
+
+                <p>Email: <strong><a href="mailto:&#x34;&#57;&#57;&#x38;&#51;&#56;&#x37;&#x34;&#x32;&#x40;&#113;&#x71;&#x2e;&#x63;&#111;&#x6d;">&#x34;&#57;&#57;&#x38;&#51;&#56;&#x37;&#x34;&#x32;&#x40;&#113;&#x71;&#x2e;&#x63;&#111;&#x6d;</a></strong></p>
+
+				<p>微信: <strong>fjddhd</strong></p>
+
+            </div>
+        
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-dcoltkdwxyvplnycaelfmf7iymmecvbdmhn6q44cnqmtbapwp42k1m6o6e8y.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    </body>
+</html>
